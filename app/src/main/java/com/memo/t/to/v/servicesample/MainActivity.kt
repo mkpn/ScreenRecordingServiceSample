@@ -1,27 +1,38 @@
 package com.memo.t.to.v.servicesample
 
 import android.Manifest
+import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
-import androidx.appcompat.app.AppCompatActivity
-import android.os.Bundle
 import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager
 import android.os.Build
+import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
 import android.view.View
+import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 
 
 class MainActivity : AppCompatActivity() {
 
     //リクエストの結果
-    private val code = 512
     private val permissionCode = 810
     lateinit var projectionManager: MediaProjectionManager
+
+    //マイクの権限があるので画面録画リクエスト
+    //ダイアログを出す
+    // グローバル変数じゃないとクラッシュするらしい
+    private val startForResult =
+        registerForActivityResult(StartActivityForResult()) {
+            if (it?.resultCode == Activity.RESULT_OK && it.data != null) {
+                handleActivityResult(it.data!!)
+            }
+        }
 
     /** Defines callbacks for service binding, passed to bindService()  */
     private val connection = object : ServiceConnection {
@@ -54,11 +65,8 @@ class MainActivity : AppCompatActivity() {
             if (!isPermissionsGranted()) {
                 requestRecordPermissions()
             } else {
-                //マイクの権限があるので画面録画リクエスト
-                //ダイアログを出す
-                startActivityForResult(projectionManager.createScreenCaptureIntent(), code)
+                startForResult.launch(projectionManager.createScreenCaptureIntent())
             }
-
         }
 
         val stopButton = findViewById<View>(R.id.stop_button)
@@ -95,9 +103,7 @@ class MainActivity : AppCompatActivity() {
         requestPermissions(permissions, permissionCode)
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-
+    private fun handleActivityResult(data: Intent) {
         val intent = Intent(application, TestService::class.java)
         intent.putExtra("code", -1) //必要なのは結果。startActivityForResultのrequestCodeではない。
         intent.putExtra("data", data)
