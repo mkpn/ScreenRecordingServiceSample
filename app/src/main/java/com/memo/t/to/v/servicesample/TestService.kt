@@ -16,8 +16,12 @@ import android.provider.MediaStore
 import android.util.Log
 import android.widget.Toast
 import java.io.File
+import android.app.NotificationManager
 
-class TestService : Service() {
+
+
+
+open class TestService : Service() {
 
     private lateinit var newUri: Uri
 
@@ -39,21 +43,24 @@ class TestService : Service() {
 
     private lateinit var filePath: File
     private lateinit var values: ContentValues
+    private lateinit var fileName: String
 
     override fun onBind(p0: Intent?): IBinder? {
         return null
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        intent?.let {
+            //データ受け取る
+            data = it.getParcelableExtra("data")
+            code = it.getIntExtra("code", Activity.RESULT_OK)
+            fileName = it.getStringExtra("title") ?: ""
 
-        //データ受け取る
-        data = intent?.getParcelableExtra("data")
-        code = intent?.getIntExtra("code", Activity.RESULT_OK) ?: Activity.RESULT_OK
-
-        //画面の大きさ
-        //   height = intent?.getIntExtra("height", 1000) ?: 1000
-        //   width = intent?.getIntExtra("width", 1000) ?: 1000
-        dpi = intent?.getIntExtra("dpi", 1000) ?: 1000
+            //画面の大きさ
+            height = it.getIntExtra("height", 1000)
+            width = it.getIntExtra("width", 1000)
+            dpi = it.getIntExtra("dpi", 1000)
+        }
 
         showNotification()
         //録画開始
@@ -85,12 +92,20 @@ class TestService : Service() {
                 .setContentTitle("画面録画")
                 .build()
             startForeground(1, notification)
+        } else {
+            val notification = Notification().apply {
+                tickerText = "録画中です。"
+            }
+            val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+            nm.notify(1, notification) // 設定したNotificationを通知する
         }
     }
 
     //Service終了と同時に録画終了
     override fun onDestroy() {
         super.onDestroy()
+        Log.d("デバッグ", "startRec")
+
         stopRec()
     }
 
@@ -99,8 +114,8 @@ class TestService : Service() {
         filePath = getFilePath()
 
         values = ContentValues().apply {
-            val fileName = getFileName()
             put(MediaStore.Video.Media.TITLE, fileName)
+            put(MediaStore.Video.Media.DISPLAY_NAME, fileName)
             put(
                 MediaStore.Video.Media.DATE_ADDED,
                 (System.currentTimeMillis() / 1000).toInt()
@@ -117,8 +132,6 @@ class TestService : Service() {
             newUri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
             contentResolver.insert(newUri, values)!!
         }
-
-        newUri.path?.let { Log.d("デバッグ", it) }
 
         val file = contentResolver.openFileDescriptor(newUri, "w")!!
 
@@ -159,7 +172,9 @@ class TestService : Service() {
     }
 
     //録画止める
-    fun stopRec() {
+    private fun stopRec() {
+        Log.d("デバッグ", "stopRec")
+
         mediaRecorder.stop()
         mediaRecorder.release()
         virtualDisplay.release()
@@ -172,16 +187,10 @@ class TestService : Service() {
         //ScopedStorageで作られるサンドボックスへのぱす
         val scopedStoragePath = getExternalFilesDir(null)
         //写真ファイル作成
-        val file = File("${scopedStoragePath?.path}/${System.currentTimeMillis()}.mp4")
-        Log.d("デバッグ", "fileどうなってる？ " + file.path)
-        return file
+        return File("${scopedStoragePath?.path}/${System.currentTimeMillis()}.mp4")
     }
 
-    fun getFileName(): String {
-        return "録画テスト_${System.currentTimeMillis()}.mp4"
-    }
-
-    protected fun addRecordingToMediaLibrary() {
+    private fun addRecordingToMediaLibrary() {
         //creating content resolver and storing it in the external content uri
         val contentResolver = contentResolver
 
@@ -192,5 +201,4 @@ class TestService : Service() {
             Toast.makeText(this, "Added File $newUri", Toast.LENGTH_LONG).show()
         }
     }
-
 }

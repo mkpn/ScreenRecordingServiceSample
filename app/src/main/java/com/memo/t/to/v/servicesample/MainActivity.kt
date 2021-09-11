@@ -11,6 +11,7 @@ import android.hardware.display.VirtualDisplay
 import android.media.MediaRecorder
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
+import android.os.Build
 import android.util.Log
 import android.view.View
 import androidx.core.content.ContextCompat
@@ -20,8 +21,8 @@ import java.io.File
 class MainActivity : AppCompatActivity() {
 
     //リクエストの結果
-    val code = 512
-    val permissionCode = 810
+    private val code = 512
+    private val permissionCode = 810
     lateinit var projectionManager: MediaProjectionManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,6 +66,16 @@ class MainActivity : AppCompatActivity() {
         intent.putExtra("height", metrics.heightPixels)
         intent.putExtra("width", metrics.widthPixels)
         intent.putExtra("dpi", metrics.densityDpi)
-        startForegroundService(intent)
+        intent.putExtra("title", getFileName())
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
+        }
+    }
+
+    private fun getFileName(): String {
+        return "録画テスト_${System.currentTimeMillis()}.mp4"
     }
 }
