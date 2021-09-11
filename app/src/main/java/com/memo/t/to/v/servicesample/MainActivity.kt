@@ -66,6 +66,7 @@ class MainActivity : AppCompatActivity() {
         val stopButton = findViewById<View>(R.id.stop_button)
         stopButton.setOnClickListener {
             val intent = Intent(application, TestService::class.java)
+            unbindService(connection)
             stopService(intent)
         }
     }
