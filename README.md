@@ -1,5 +1,6 @@
 # ScreenRecordingServiceSample
 スマホ画面とマイク音声が入った動画の録画ができる
+参考：https://takusan23.github.io/Bibouroku/2020/04/06/MediaProjection/
 
 ## 処理手順
 ### 録画前に以下を済ませる
