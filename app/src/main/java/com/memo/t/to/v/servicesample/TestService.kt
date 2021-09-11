@@ -13,11 +13,11 @@ import android.net.Uri
 import android.os.Build
 import android.os.IBinder
 import android.provider.MediaStore
-import android.util.Log
 import android.widget.Toast
 import java.io.File
 import android.app.NotificationManager
 import android.os.Binder
+import androidx.core.app.NotificationCompat
 
 open class TestService : Service() {
 
@@ -76,8 +76,8 @@ open class TestService : Service() {
             getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         //通知チャンネル
         val channelID = "rec_notify"
-        //通知チャンネルが存在しないときは登録する
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            //通知チャンネルが存在しないときは登録する
             if (notificationManager.getNotificationChannel(channelID) == null) {
                 val channel =
                     NotificationChannel(
@@ -91,33 +91,33 @@ open class TestService : Service() {
             val notification = Notification.Builder(applicationContext, channelID)
                 .setContentText("録画中です。")
                 .setContentTitle("画面録画")
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .build()
             startForeground(1, notification)
         } else {
-            val notification = Notification().apply {
-                tickerText = "録画中です。"
-            }
-            val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-            nm.notify(1, notification) // 設定したNotificationを通知する
+            val notification = NotificationCompat.Builder(applicationContext, channelID)
+                .setContentTitle("画面録画")
+                .setContentText("録画中です")
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .build()
+            startForeground(1, notification)
         }
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
-        Log.d("デバッグ", "onUnbind")
         return super.onUnbind(intent)
     }
 
     //Service終了と同時に録画終了
     override fun onDestroy() {
         super.onDestroy()
-        Log.d("デバッグ", "startRec")
-
         stopRec()
     }
 
     //録画開始
     private fun startRec() {
-        filePath = getFilePath()
+        filePath = getFile()
 
         values = ContentValues().apply {
             put(MediaStore.Video.Media.TITLE, fileName)
@@ -135,8 +135,7 @@ open class TestService : Service() {
                 MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
             newUri = contentResolver.insert(collection, values)!!
         } else {
-            newUri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-            contentResolver.insert(newUri, values)!!
+            newUri = contentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)!!
         }
 
         val file = contentResolver.openFileDescriptor(newUri, "w")!!
@@ -179,8 +178,6 @@ open class TestService : Service() {
 
     //録画止める
     private fun stopRec() {
-        Log.d("デバッグ", "stopRec")
-
         mediaRecorder.stop()
         mediaRecorder.release()
         virtualDisplay.release()
@@ -189,23 +186,22 @@ open class TestService : Service() {
     }
 
     //保存先取得。今回は対象範囲別ストレージに保存する
-    fun getFilePath(): File {
+    private fun getFile(): File {
         //ScopedStorageで作られるサンドボックスへのぱす
         val scopedStoragePath = getExternalFilesDir(null)
-        //写真ファイル作成
+        //ファイル作成
         return File("${scopedStoragePath?.path}/${System.currentTimeMillis()}.mp4")
     }
 
     private fun addRecordingToMediaLibrary() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+
         //creating content resolver and storing it in the external content uri
         val contentResolver = contentResolver
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            values.clear()
-            values.put(MediaStore.Video.Media.IS_PENDING, 0)
-            contentResolver.update(newUri, values, null, null)
-            Toast.makeText(this, "Added File $newUri", Toast.LENGTH_LONG).show()
-        }
+        values.clear()
+        values.put(MediaStore.Video.Media.IS_PENDING, 0)
+        contentResolver.update(newUri, values, null, null)
+        Toast.makeText(this, "Added File $newUri", Toast.LENGTH_LONG).show()
     }
 
     /**

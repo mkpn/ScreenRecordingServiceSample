@@ -51,10 +51,8 @@ class MainActivity : AppCompatActivity() {
         val recButton = findViewById<View>(R.id.rec_button)
         recButton.setOnClickListener {
             //その前にマイクへアクセスしていいか尋ねる
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
-                != PackageManager.PERMISSION_GRANTED
-            ) {
-                requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), permissionCode)
+            if (!isPermissionsGranted()) {
+                requestRecordPermissions()
             } else {
                 //マイクの権限があるので画面録画リクエスト
                 //ダイアログを出す
@@ -71,11 +69,36 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun isPermissionsGranted(): Boolean {
+        Log.d(
+            "デバッグ",
+            "権限 " + (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_GRANTED)
+        )
+        return ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+                && ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun requestRecordPermissions() {
+        val permissions = arrayOf(
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            Manifest.permission.RECORD_AUDIO,
+        )
+        requestPermissions(permissions, permissionCode)
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
         val intent = Intent(application, TestService::class.java)
-        Log.d("デバッグ", "何なの")
         intent.putExtra("code", -1) //必要なのは結果。startActivityForResultのrequestCodeではない。
         intent.putExtra("data", data)
         //画面の大きさも一緒に入れる
@@ -87,6 +110,8 @@ class MainActivity : AppCompatActivity() {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(intent)
+        } else {
+            startService(intent)
         }
         bindService(intent, connection, Context.BIND_AUTO_CREATE)
     }
