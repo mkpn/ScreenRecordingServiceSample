@@ -17,11 +17,12 @@ import android.util.Log
 import android.widget.Toast
 import java.io.File
 import android.app.NotificationManager
-
-
-
+import android.os.Binder
 
 open class TestService : Service() {
+
+    // Binder given to clients
+    private val binder = LocalBinder()
 
     private lateinit var newUri: Uri
 
@@ -99,6 +100,11 @@ open class TestService : Service() {
             val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             nm.notify(1, notification) // 設定したNotificationを通知する
         }
+    }
+
+    override fun onUnbind(intent: Intent?): Boolean {
+        Log.d("デバッグ", "onUnbind")
+        return super.onUnbind(intent)
     }
 
     //Service終了と同時に録画終了
@@ -200,5 +206,14 @@ open class TestService : Service() {
             contentResolver.update(newUri, values, null, null)
             Toast.makeText(this, "Added File $newUri", Toast.LENGTH_LONG).show()
         }
+    }
+
+    /**
+     * Class used for the client Binder.  Because we know this service always
+     * runs in the same process as its clients, we don't need to deal with IPC.
+     */
+    inner class LocalBinder : Binder() {
+        // Return this instance of LocalService so clients can call public methods
+        fun getService(): TestService = this@TestService
     }
 }

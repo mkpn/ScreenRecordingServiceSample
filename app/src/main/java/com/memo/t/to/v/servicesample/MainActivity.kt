@@ -1,21 +1,19 @@
 package com.memo.t.to.v.servicesample
 
 import android.Manifest
+import android.content.ComponentName
 import android.content.Context
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.content.Intent
+import android.content.ServiceConnection
 import android.content.pm.PackageManager
-import android.hardware.display.DisplayManager
-import android.hardware.display.VirtualDisplay
-import android.media.MediaRecorder
-import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
+import android.os.IBinder
 import android.util.Log
 import android.view.View
 import androidx.core.content.ContextCompat
-import java.io.File
 
 
 class MainActivity : AppCompatActivity() {
@@ -24,6 +22,24 @@ class MainActivity : AppCompatActivity() {
     private val code = 512
     private val permissionCode = 810
     lateinit var projectionManager: MediaProjectionManager
+
+    /** Defines callbacks for service binding, passed to bindService()  */
+    private val connection = object : ServiceConnection {
+
+        private var bound = false
+        private lateinit var testService: TestService
+
+        override fun onServiceConnected(className: ComponentName, service: IBinder) {
+            // We've bound to LocalService, cast the IBinder and get LocalService instance
+            val binder = service as TestService.LocalBinder
+            testService = binder.getService()
+            bound = true
+        }
+
+        override fun onServiceDisconnected(arg0: ComponentName) {
+            bound = false
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,9 +86,8 @@ class MainActivity : AppCompatActivity() {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(intent)
-        } else {
-            startService(intent)
         }
+        bindService(intent, connection, Context.BIND_AUTO_CREATE)
     }
 
     private fun getFileName(): String {
